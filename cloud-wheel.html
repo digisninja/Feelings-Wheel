@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud Wheel</title>
+<!--
+  Prototype: the feelings wheel drawn as drifting clouds.
+  Cloud effect adapted from svg-clouds by Ethan Morrill-Ploum (MIT License),
+  https://github.com/morrilet/svg-clouds — a blurred shape displaced by
+  animated fractal noise, stacked in back / mid / front layers.
+-->
+<style>
+  :root {
+    --sky-top: #d9e6f7;
+    --sky-mid: #eee9f3;
+    --sky-bottom: #fbf1ea;
+    --text: #2a2e45;
+    --muted: #6a6f88;
+    --chip: rgba(255, 255, 255, .7);
+    --chip-border: rgba(42, 46, 69, .12);
+    --haze: rgba(255, 255, 255, .75);
+    --halo-opacity: .55;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --sky-top: #161a2e;
+      --sky-mid: #231f3a;
+      --sky-bottom: #33263d;
+      --text: #eef0fa;
+      --muted: #a9adc6;
+      --chip: rgba(255, 255, 255, .08);
+      --chip-border: rgba(255, 255, 255, .14);
+      --haze: rgba(255, 255, 255, .07);
+      --halo-opacity: .45;
+    }
+  }
+  :root[data-theme="dark"] {
+    --sky-top: #161a2e;
+    --sky-mid: #231f3a;
+    --sky-bottom: #33263d;
+    --text: #eef0fa;
+    --muted: #a9adc6;
+    --chip: rgba(255, 255, 255, .08);
+    --chip-border: rgba(255, 255, 255, .14);
+    --haze: rgba(255, 255, 255, .07);
+    --halo-opacity: .45;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    min-height: 100vh;
+    color: var(--text);
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bottom) 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Distant haze drifting across the sky */
+  .haze { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .haze span {
+    position: absolute;
+    left: -40vw;
+    width: 38vw;
+    height: 14vw;
+    border-radius: 50%;
+    background: var(--haze);
+    filter: blur(28px);
+    animation: drift linear infinite;
+  }
+  .haze span:nth-child(1) { top: 8%;  animation-duration: 95s; animation-delay: -20s; }
+  .haze span:nth-child(2) { top: 58%; animation-duration: 120s; animation-delay: -70s; width: 50vw; }
+  .haze span:nth-child(3) { top: 80%; animation-duration: 80s; animation-delay: -45s; width: 30vw; }
+  @keyframes drift { to { transform: translateX(150vw); } }
+
+  header {
+    position: relative;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+  .tag { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--chip); border: 1px solid var(--chip-border); color: var(--muted); }
+  .lang { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--chip); border: 1px solid var(--chip-border); backdrop-filter: blur(8px); }
+  .lang button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--text); color: var(--sky-bottom); }
+
+  main { position: relative; max-width: 960px; margin: 0 auto; padding: 4px 16px 40px; display: flex; flex-direction: column; align-items: center; }
+  .step { margin: 14px 0 0; color: var(--muted); font-size: 15px; text-align: center; min-height: 1.4em; transition: opacity .4s; }
+
+  .stage { position: relative; width: 100%; max-width: min(640px, 72vh); aspect-ratio: 1; margin-top: 4px; }
+  .halo {
+    position: absolute;
+    inset: 4%;
+    filter: blur(34px);
+    opacity: 0;
+    transition: opacity .9s ease;
+    -webkit-mask: radial-gradient(closest-side, transparent 38%, #000 58%, #000 72%, transparent 96%);
+            mask: radial-gradient(closest-side, transparent 38%, #000 58%, #000 72%, transparent 96%);
+  }
+  .halo.on { opacity: var(--halo-opacity); }
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; user-select: none; -webkit-user-select: none; }
+  .hit { fill: transparent; cursor: pointer; touch-action: none; outline: none; }
+  .hit:focus-visible { stroke: var(--text); stroke-width: 2; stroke-dasharray: 4 6; }
+  svg.dragging .hit { cursor: grabbing; }
+  .label text {
+    pointer-events: none;
+    font-weight: 650;
+    fill: #2a2e45;
+    paint-order: stroke;
+    stroke: rgba(255, 255, 255, .6);
+    stroke-width: 5px;
+    stroke-linejoin: round;
+  }
+  .label text.sub { font-weight: 500; fill: #4c5170; }
+
+  .footer { display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 96px; }
+  .crumbs { color: var(--muted); font-size: 14px; min-height: 1.4em; text-align: center; }
+  .final { text-align: center; min-height: 0; }
+  .final h2 { margin: 0; font-size: 26px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn { font: inherit; font-size: 15px; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--chip); color: var(--text); cursor: pointer; backdrop-filter: blur(8px); }
+  .btn.primary { background: var(--text); color: var(--sky-bottom); border-color: transparent; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="haze" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<header>
+  <h1><span id="title">Feelings Wheel</span><span class="tag" id="tag">Cloud prototype</span></h1>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="zh" aria-pressed="false">中文</button>
+  </div>
+</header>
+
+<main>
+  <p class="step" id="step"></p>
+  <div class="stage">
+    <div class="halo" id="haloA"></div>
+    <div class="halo" id="haloB"></div>
+    <svg id="sky" viewBox="-340 -340 680 680" role="group">
+      <defs id="defs"></defs>
+      <g id="lBack" filter="url(#f-back)"></g>
+      <g id="lMid" filter="url(#f-mid)"></g>
+      <g id="lFront" filter="url(#f-front)"></g>
+      <g id="labels"></g>
+      <g id="hits"></g>
+    </svg>
+  </div>
+  <div class="footer">
+    <div class="crumbs" id="crumbs"></div>
+    <div class="final" id="final" hidden></div>
+    <div class="actions" id="actions"></div>
+  </div>
+</main>
+
+<script>
+const RAW = [
+  ['Happy', '快乐', '#F4B63F', [
+    ['Playful', '顽皮', [['Aroused', '激动'], ['Cheeky', '调皮']]],
+    ['Content', '满足', [['Free', '自由'], ['Joyful', '喜悦']]],
+    ['Interested', '感兴趣', [['Curious', '好奇'], ['Inquisitive', '求知']]],
+    ['Proud', '自豪', [['Successful', '成功'], ['Confident', '自信']]],
+    ['Accepted', '被接纳', [['Respected', '被尊重'], ['Valued', '被重视']]],
+    ['Powerful', '有力量', [['Courageous', '勇敢'], ['Creative', '有创造力']]],
+    ['Peaceful', '平静', [['Loving', '充满爱'], ['Thankful', '感恩']]],
+    ['Trusting', '信任', [['Sensitive', '敏感'], ['Intimate', '亲密']]],
+    ['Optimistic', '乐观', [['Hopeful', '充满希望'], ['Inspired', '受鼓舞']]],
+  ]],
+  ['Surprised', '惊讶', '#3BB8A6', [
+    ['Startled', '吃惊', [['Shocked', '震惊'], ['Dismayed', '惊愕']]],
+    ['Confused', '困惑', [['Disillusioned', '幻灭'], ['Perplexed', '茫然']]],
+    ['Amazed', '惊叹', [['Astonished', '惊奇'], ['Awe', '敬畏']]],
+    ['Excited', '兴奋', [['Eager', '渴望'], ['Energetic', '精力充沛']]],
+  ]],
+  ['Bad', '糟糕', '#8B9099', [
+    ['Bored', '无聊', [['Indifferent', '冷漠'], ['Apathetic', '漠然']]],
+    ['Busy', '忙碌', [['Pressured', '有压力'], ['Rushed', '匆忙']]],
+    ['Stressed', '压力大', [['Overwhelmed', '喘不过气'], ['Out of control', '失控']]],
+    ['Tired', '疲惫', [['Sleepy', '困倦'], ['Unfocused', '无法专注']]],
+  ]],
+  ['Fearful', '恐惧', '#8C6BD6', [
+    ['Scared', '害怕', [['Helpless', '无助'], ['Frightened', '惊恐']]],
+    ['Anxious', '焦虑', [['Overwhelmed', '不堪重负'], ['Worried', '担忧']]],
+    ['Insecure', '不安', [['Inadequate', '不够好'], ['Inferior', '低人一等']]],
+    ['Weak', '软弱', [['Worthless', '毫无价值'], ['Insignificant', '微不足道']]],
+    ['Rejected', '被拒绝', [['Excluded', '被排斥'], ['Persecuted', '被迫害']]],
+    ['Threatened', '受威胁', [['Nervous', '紧张'], ['Exposed', '暴露']]],
+  ]],
+  ['Angry', '愤怒', '#E2553F', [
+    ['Let down', '失落', [['Betrayed', '被背叛'], ['Resentful', '怨恨']]],
+    ['Humiliated', '受辱', [['Disrespected', '不被尊重'], ['Ridiculed', '被嘲笑']]],
+    ['Bitter', '苦涩', [['Indignant', '愤慨'], ['Violated', '被侵犯']]],
+    ['Mad', '恼火', [['Furious', '暴怒'], ['Jealous', '嫉妒']]],
+    ['Aggressive', '好斗', [['Provoked', '被激怒'], ['Hostile', '充满敌意']]],
+    ['Frustrated', '挫败', [['Infuriated', '气愤'], ['Annoyed', '烦躁']]],
+    ['Distant', '疏离', [['Withdrawn', '退缩'], ['Numb', '麻木']]],
+    ['Critical', '挑剔', [['Skeptical', '怀疑'], ['Dismissive', '轻视']]],
+  ]],
+  ['Disgusted', '厌恶', '#7DAE48', [
+    ['Disapproving', '不认同', [['Judgmental', '评判'], ['Embarrassed', '尴尬']]],
+    ['Disappointed', '失望', [['Appalled', '震惊'], ['Revolted', '反感']]],
+    ['Awful', '难受', [['Nauseated', '恶心'], ['Detestable', '憎恶']]],
+    ['Repelled', '排斥', [['Horrified', '惊骇'], ['Hesitant', '犹豫']]],
+  ]],
+  ['Sad', '悲伤', '#5A8BE8', [
+    ['Lonely', '孤独', [['Isolated', '孤立'], ['Abandoned', '被抛弃']]],
+    ['Vulnerable', '脆弱', [['Victimized', '受伤害'], ['Fragile', '易碎']]],
+    ['Despair', '绝望', [['Grief', '哀痛'], ['Powerless', '无力']]],
+    ['Guilty', '内疚', [['Ashamed', '羞愧'], ['Remorseful', '懊悔']]],
+    ['Depressed', '消沉', [['Inferior', '自卑'], ['Empty', '空虚']]],
+    ['Hurt', '受伤', [['Embarrassed', '难堪'], ['Disappointed', '失望']]],
+  ]],
+];
+
+const UI = {
+  en: {
+    title: 'Feelings Wheel', tag: 'Cloud prototype',
+    prompt: ['How are you', 'feeling?'],
+    step0: 'Start with the broad feeling that fits best',
+    step1: 'Which of these is closer?',
+    step2: 'Find the most precise word',
+    stepDone: 'You named it',
+    tapBack: 'tap to go back',
+    back: 'Back', thisIsIt: "That's it", restart: 'Start over',
+    hint: 'Drag the clouds to spin them · tap one to open it',
+  },
+  zh: {
+    title: '情绪轮', tag: '云朵原型',
+    prompt: ['你现在', '感觉如何？'],
+    step0: '先选择最贴近的大类情绪',
+    step1: '哪一个更接近？',
+    step2: '找到最准确的词',
+    stepDone: '你找到了它',
+    tapBack: '点击返回',
+    back: '返回', thisIsIt: '就是这个', restart: '重新开始',
+    hint: '拖动云朵可以旋转 · 点击一朵云展开',
+  },
+};
+
+function build(arr, depth, core) {
+  return arr.map(([en, zh, a, b]) => {
+    const node = { en, zh, depth };
+    node.core = core || node;
+    node.base = typeof a === 'string' ? a : node.core.base;
+    const kids = Array.isArray(a) ? a : b;
+    node.children = kids ? build(kids, depth + 1, node.core) : [];
+    return node;
+  }).map((node, i, all) => {
+    // Siblings drift a little around their core hue so the ring blends instead of looking flat
+    if (depth > 0) node.base = hueShift(node.base, all.length > 1 ? (i / (all.length - 1) - 0.5) * 40 : 0);
+    return node;
+  });
+}
+// ---------- Colour ----------
+function hueShift(hex, deg) {
+  let [r, g, b] = rgb(hex).map(v => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  let h = 0, s = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  }
+  h = (h * 60 + deg + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r1, g1, b1].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+}
+function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+const DATA = build(RAW, 0, null);
+
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let lang = 'en';
+try { if (localStorage.getItem('fw-lang') === 'zh') lang = 'zh'; } catch (e) {}
+const label = n => n[lang];
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const svg = $('sky');
+const R = 200;            // orbit radius of the ring clouds
+const CENTER = 92;        // visual radius of the centre cloud
+const FINAL = 140;        // visual radius once a feeling is named
+
+function svgEl(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ---------- Cloud filters (svg-clouds technique) ----------
+// Blur the shape, then push its pixels around with fractal noise whose
+// channels are hue-rotated over time so the edges keep billowing.
+function cloudFilter(id, { seed, freq, octaves, blur, scale, dur }) {
+  const anim = reduceMotion ? '' : `<animate attributeName="values" values="0;360" dur="${dur}" repeatCount="indefinite"/>`;
+  return `<filter id="${id}" filterUnits="userSpaceOnUse" x="-340" y="-340" width="680" height="680">
+    <feTurbulence type="fractalNoise" seed="${seed}" baseFrequency="${freq}" numOctaves="${octaves}" result="base"/>
+    <feColorMatrix in="base" type="hueRotate" values="0" result="shifted">${anim}</feColorMatrix>
+    <feColorMatrix in="shifted" result="tex" type="matrix" values="1 0 0 0 -1  1 0 0 0 -1  1 0 0 0 -1  1 0 0 0 0"/>
+    <feGaussianBlur in="SourceGraphic" result="soft" stdDeviation="${blur}"/>
+    <feDisplacementMap in="soft" in2="tex" scale="${scale}" result="cloud"/>
+    <feGaussianBlur in="cloud" stdDeviation="1.6"/>
+  </filter>`;
+}
+$('defs').innerHTML =
+  cloudFilter('f-back', { seed: 3, freq: 0.012, octaves: 3, blur: 13, scale: 95, dur: '34s' }) +
+  cloudFilter('f-mid', { seed: 7, freq: 0.014, octaves: 3, blur: 9, scale: 70, dur: '26s' }) +
+  cloudFilter('f-front', { seed: 11, freq: 0.018, octaves: 3, blur: 7, scale: 48, dur: '19s' });
+
+function mix(a, b, t) {
+  const x = rgb(a), y = rgb(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+// Shadow underneath, soft body, bright highlight on top
+function palette(node) {
+  if (!node) return { back: '#c3cde4', mid: '#eef2fb', front: '#ffffff' };
+  const body = mix(node.base, '#ffffff', 0.28 + 0.16 * node.depth);
+  return { back: mix(body, '#55618a', 0.32), mid: body, front: mix(node.base, '#ffffff', 0.84) };
+}
+
+// ---------- Clouds ----------
+const layers = [$('lBack'), $('lMid'), $('lFront')];
+let clouds = [];
+
+// A cloud is a cluster of overlapping puffs; the filters make it billow
+function puff(layer, size, color, dx, dy) {
+  const g = svgEl('g', null, layer);
+  const inner = svgEl('g', { transform: `translate(${dx} ${dy})` }, g);
+  [[-0.56, 0.12, 0.5], [-0.05, -0.14, 0.7], [0.52, 0.06, 0.56], [0.08, 0.24, 0.58]]
+    .forEach(([x, y, r]) => svgEl('circle', { cx: x * size, cy: y * size, r: r * size, fill: color }, inner));
+  return g;
+}
+
+function makeCloud(node, size, angle) {
+  const p = palette(node);
+  const c = {
+    node, size, a0: angle,
+    r: 0, s: 0.2, o: 0,
+    t: { r: 0, s: 1, o: 1 },
+    delay: 0, phase: Math.random() * Math.PI * 2,
+    hover: false, fixed: false, center: false, dead: false,
+  };
+  c.parts = [
+    puff(layers[0], size * 1.04, p.back, size * 0.1, size * 0.2),
+    puff(layers[1], size, p.mid, 0, 0),
+    puff(layers[2], size * 0.68, p.front, -size * 0.14, -size * 0.2),
+  ];
+  c.label = svgEl('g', { class: 'label' }, $('labels'));
+  c.hit = svgEl('circle', { class: 'hit', r: size, tabindex: 0, role: 'button' }, $('hits'));
+  c.hit.addEventListener('pointerdown', e => startDrag(e));
+  c.hit.addEventListener('click', () => { if (!dragged) activate(c); });
+  c.hit.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(c); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rot += e.key === 'ArrowRight' ? 15 : -15; }
+  });
+  c.hit.addEventListener('pointerenter', () => { c.hover = true; });
+  c.hit.addEventListener('pointerleave', () => { c.hover = false; });
+  clouds.push(c);
+  return c;
+}
+
+function setLabel(c) {
+  const t = UI[lang];
+  c.label.innerHTML = '';
+  let lines, size, sub = null;
+  if (!c.node) { lines = t.prompt; size = 21; }
+  else if (c.center) {
+    lines = [label(c.node)];
+    size = path.length && done ? 34 : 26;
+    if (!done) sub = t.tapBack;
+  } else {
+    lines = lang === 'en' && label(c.node).length > 11 && label(c.node).includes(' ')
+      ? label(c.node).split(' ') : [label(c.node)];
+    size = Math.max(15, Math.min(21, c.size * 0.3));
+  }
+  const lh = size * 1.18;
+  const total = lines.length * lh + (sub ? 18 : 0);
+  lines.forEach((ln, i) => {
+    const tx = svgEl('text', { x: 0, y: -total / 2 + lh * (i + 0.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': size }, c.label);
+    tx.textContent = ln;
+  });
+  if (sub) {
+    const tx = svgEl('text', { class: 'sub', x: 0, y: total / 2 - 7, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 12 }, c.label);
+    tx.textContent = sub;
+  }
+  c.hit.setAttribute('aria-label', c.node ? label(c.node) : t.prompt.join(' '));
+}
+
+function retire(c, inward) {
+  c.dead = true;
+  c.hover = false;
+  if (c.center) c.t = { r: 0, s: c.s * 0.5, o: 0 };
+  else c.t = inward ? { r: R * 0.35, s: 0.35, o: 0 } : { r: R * 1.5, s: 0.6, o: 0 };
+}
+
+// Freeze the current spin into each cloud's own angle, so a new ring starts upright
+function freezeSpin() {
+  clouds.forEach(c => { if (!c.fixed) { c.a0 += rot; c.fixed = true; } });
+  rot = 0;
+  coastV = 0;
+}
+
+function makeCenter(node, grow) {
+  const c = makeCloud(node, 70, 0);
+  c.center = true;
+  c.fixed = true;
+  c.s = grow ? 0.3 : 0.8;
+  c.t = { r: 0, s: CENTER / 70, o: 1 };
+  setLabel(c);
+  return c;
+}
+
+function makeRing(items, fromOutside, delay) {
+  const n = items.length;
+  const size = Math.min(80, (Math.PI * R / n) * 0.98);
+  const now = performance.now();
+  items.forEach((node, i) => {
+    const c = makeCloud(node, size, -90 + i * 360 / n);
+    if (fromOutside) { c.r = R * 1.5; c.s = 0.7; } else { c.r = R * 0.2; c.s = 0.25; }
+    c.t = { r: R, s: 1, o: 1 };
+    c.delay = now + delay + i * 55;
+    setLabel(c);
+  });
+  setHalo(items);
+}
+
+// ---------- Soft colour halo behind the ring ----------
+let haloFront = $('haloA'), haloBack = $('haloB');
+function setHalo(items) {
+  const step = 360 / items.length;
+  const stops = items.map((n, i) => `${mix(n.base, '#ffffff', 0.15 + 0.12 * n.depth)} ${i * step}deg`);
+  stops.push(`${mix(items[0].base, '#ffffff', 0.15 + 0.12 * items[0].depth)} 360deg`);
+  [haloFront, haloBack] = [haloBack, haloFront];
+  haloFront.style.background = `conic-gradient(${stops.join(',')})`;
+  haloFront.classList.add('on');
+  haloBack.classList.remove('on');
+}
+function clearHalo() { $('haloA').classList.remove('on'); $('haloB').classList.remove('on'); }
+
+// ---------- Navigation ----------
+let path = [];
+let done = false;
+
+function activate(c) {
+  if (c.dead) return;
+  if (c.center) { if (c.node) back(); return; }
+  choose(c);
+}
+
+function choose(c) {
+  path.push(c.node);
+  freezeSpin();
+  clouds.forEach(o => { if (o !== c && !o.dead) retire(o, false); });
+  const leaf = !c.node.children.length;
+  c.center = true;
+  c.hover = false;
+  done = leaf;
+  c.t = { r: 0, s: (leaf ? FINAL : CENTER) / c.size, o: 1 };
+  setLabel(c);
+  if (leaf) clearHalo();
+  else makeRing(c.node.children, false, 260);
+  renderChrome();
+}
+
+function settle() {
+  // Stop at the current level: the centre cloud becomes the named feeling
+  freezeSpin();
+  clouds.forEach(o => { if (!o.dead && !o.center) retire(o, false); });
+  const c = clouds.find(o => o.center && !o.dead);
+  done = true;
+  c.t = { r: 0, s: FINAL / c.size, o: 1 };
+  setLabel(c);
+  clearHalo();
+  renderChrome();
+}
+
+function back() {
+  if (!path.length) return;
+  freezeSpin();
+  clouds.forEach(o => { if (!o.dead) retire(o, true); });
+  // Coming back from "That's it" reopens the same level; otherwise go up one
+  if (!(done && path[path.length - 1].children.length)) path.pop();
+  done = false;
+  rebuild(true);
+}
+
+function restart() {
+  freezeSpin();
+  clouds.forEach(o => { if (!o.dead) retire(o, true); });
+  path = [];
+  done = false;
+  rebuild(true);
+}
+
+function rebuild(fromOutside) {
+  const cur = path[path.length - 1];
+  makeCenter(cur || null, true);
+  makeRing(cur ? cur.children : DATA, fromOutside, 120);
+  renderChrome();
+}
+
+function renderChrome() {
+  const t = UI[lang];
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.title = t.title;
+  $('title').textContent = t.title;
+  $('tag').textContent = t.tag;
+  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  $('step').textContent = done ? t.stepDone : t['step' + path.length];
+  $('crumbs').textContent = path.map(label).join('  ›  ');
+
+  const fin = $('final');
+  fin.hidden = true;
+
+  const actions = $('actions');
+  actions.innerHTML = '';
+  const btn = (txt, fn, primary) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (primary ? ' primary' : '');
+    b.textContent = txt;
+    b.onclick = fn;
+    actions.append(b);
+  };
+  if (done) { btn(t.back, back); btn(t.restart, restart, true); }
+  else if (path.length) { btn(t.back, back); btn(t.thisIsIt, settle, true); }
+  else {
+    const p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = t.hint;
+    actions.append(p);
+  }
+}
+
+// ---------- Drag to spin ----------
+let rot = 0, coastV = 0, dragging = false, dragged = false;
+const DRIFT = reduceMotion ? 0 : 0.0028;   // idle drift, degrees per ms
+
+function pointerAngle(e) {
+  const r = svg.getBoundingClientRect();
+  return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+}
+function startDrag(e) {
+  if (e.button !== 0) return;
+  // A tap on a still-spinning ring just stops it instead of opening a cloud
+  const wasCoasting = Math.abs(coastV) > 0.05;
+  coastV = 0;
+  dragging = true;
+  dragged = wasCoasting;
+  let last = pointerAngle(e), lastT = e.timeStamp, moved = 0, vel = 0;
+  // Listen on window rather than capturing, so a plain click still reaches the cloud
+  const move = ev => {
+    const a = pointerAngle(ev);
+    let d = a - last;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;
+    last = a;
+    moved += Math.abs(d);
+    if (moved > 4 && !dragged) { dragged = true; svg.classList.add('dragging'); }
+    const dt = Math.max(ev.timeStamp - lastT, 1);
+    lastT = ev.timeStamp;
+    vel = 0.7 * vel + 0.3 * (d / dt);
+    rot += d;
+  };
+  const up = ev => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', up);
+    svg.classList.remove('dragging');
+    dragging = false;
+    if (dragged) {
+      coastV = ev.timeStamp - lastT > 80 ? 0 : Math.max(-1, Math.min(1, vel));
+      setTimeout(() => { dragged = false; }, 0);
+    }
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+}
+
+// ---------- Animation loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  const dt = Math.min(now - lastFrame, 50);
+  lastFrame = now;
+
+  if (!dragging) {
+    if (Math.abs(coastV) > 0.01) { rot += coastV * dt; coastV *= Math.pow(0.93, dt / 16); }
+    else {
+      coastV = 0;
+      if (!done && !clouds.some(c => c.hover && !c.dead)) rot += DRIFT * dt;
+    }
+  }
+
+  const ease = 1 - Math.exp(-dt / 150);
+  for (const c of clouds) {
+    if (now >= c.delay) for (const k of ['r', 's', 'o']) c[k] += (c.t[k] - c[k]) * ease;
+    const ang = (c.a0 + (c.fixed ? 0 : rot)) * Math.PI / 180;
+    const x = c.r * Math.cos(ang), y = c.r * Math.sin(ang);
+    const breathe = reduceMotion ? 1 : 1 + 0.03 * Math.sin(now * 0.0011 + c.phase);
+    const sc = c.s * breathe * (c.hover && !c.center ? 1.1 : 1);
+    const tf = `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${sc.toFixed(4)})`;
+    const op = Math.max(0, Math.min(1, c.o)).toFixed(3);
+    c.parts.forEach(p => { p.setAttribute('transform', tf); p.setAttribute('opacity', op); });
+    // Labels slide with their cloud but don't balloon when it grows
+    c.label.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${Math.min(c.s, 1).toFixed(3)})`);
+    c.label.setAttribute('opacity', op);
+    c.hit.setAttribute('cx', x.toFixed(2));
+    c.hit.setAttribute('cy', y.toFixed(2));
+    c.hit.setAttribute('r', (c.size * sc * 0.85).toFixed(1));
+    c.hit.style.pointerEvents = c.dead || c.o < 0.4 ? 'none' : '';
+  }
+  // Drop clouds that have fully faded
+  clouds = clouds.filter(c => {
+    if (c.dead && c.o < 0.02) {
+      c.parts.forEach(p => p.remove());
+      c.label.remove();
+      c.hit.remove();
+      return false;
+    }
+    return true;
+  });
+
+  $('haloA').style.transform = $('haloB').style.transform = `rotate(${rot}deg)`;
+  requestAnimationFrame(frame);
+}
+
+document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+  lang = b.dataset.lang;
+  try { localStorage.setItem('fw-lang', lang); } catch (e) {}
+  clouds.forEach(c => { if (!c.dead) setLabel(c); });
+  renderChrome();
+}));
+
+rebuild(false);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

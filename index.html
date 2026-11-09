@@ -1,0 +1,1562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feelings Wheel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<!--
+  Cloud effect adapted from svg-clouds by Ethan Morrill-Ploum (MIT License),
+  https://github.com/morrilet/svg-clouds — a blurred shape displaced by
+  animated fractal noise, stacked in back / mid / front layers.
+-->
+<style>
+  :root {
+    --sky-top: #d9e6f7;
+    --sky-mid: #eee9f3;
+    --sky-bottom: #fbf1ea;
+    --bg: #f7f4f3;
+    --surface: rgba(255, 255, 255, .74);
+    --surface-2: rgba(232, 234, 246, .8);
+    --text: #2a2e45;
+    --muted: #6a6f88;
+    --border: rgba(42, 46, 69, .12);
+    --accent: #2a2e45;
+    --haze: rgba(255, 255, 255, .75);
+    --halo-opacity: .55;
+    --shadow: 0 14px 44px -16px rgba(60, 70, 120, .24);
+    --warn-bg: #fdf3e3;
+    --warn-border: #f0d29a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --sky-top: #161a2e;
+      --sky-mid: #231f3a;
+      --sky-bottom: #33263d;
+      --bg: #1d1b2c;
+      --surface: rgba(38, 35, 60, .72);
+      --surface-2: rgba(255, 255, 255, .08);
+      --text: #eef0fa;
+      --muted: #a9adc6;
+      --border: rgba(255, 255, 255, .13);
+      --accent: #eef0fa;
+      --haze: rgba(255, 255, 255, .07);
+      --halo-opacity: .45;
+      --shadow: 0 14px 44px -16px rgba(0, 0, 0, .55);
+      --warn-bg: #3a2f1c;
+      --warn-border: #6b5428;
+    }
+  }
+  :root[data-theme="dark"] {
+    --sky-top: #161a2e;
+    --sky-mid: #231f3a;
+    --sky-bottom: #33263d;
+    --bg: #1d1b2c;
+    --surface: rgba(38, 35, 60, .72);
+    --surface-2: rgba(255, 255, 255, .08);
+    --text: #eef0fa;
+    --muted: #a9adc6;
+    --border: rgba(255, 255, 255, .13);
+    --accent: #eef0fa;
+    --haze: rgba(255, 255, 255, .07);
+    --halo-opacity: .45;
+    --shadow: 0 14px 44px -16px rgba(0, 0, 0, .55);
+    --warn-bg: #3a2f1c;
+    --warn-border: #6b5428;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bottom) 100%) fixed;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Distant haze drifting across the sky */
+  .haze { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .haze span {
+    position: absolute;
+    left: -40vw;
+    width: 38vw;
+    height: 14vw;
+    border-radius: 50%;
+    background: var(--haze);
+    filter: blur(28px);
+    animation: drift linear infinite;
+  }
+  .haze span:nth-child(1) { top: 8%;  animation-duration: 95s; animation-delay: -20s; }
+  .haze span:nth-child(2) { top: 58%; animation-duration: 120s; animation-delay: -70s; width: 50vw; }
+  .haze span:nth-child(3) { top: 80%; animation-duration: 80s; animation-delay: -45s; width: 30vw; }
+  @keyframes drift { to { transform: translateX(150vw); } }
+  @media (prefers-reduced-motion: reduce) { .haze span { animation: none; } }
+
+  header {
+    position: relative;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 16px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .nav-btn {
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+
+  .lang {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    background: var(--surface);
+  }
+  .lang button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .lang button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+
+  main {
+    position: relative;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 8px 16px 48px;
+  }
+  #wheelView { display: flex; flex-direction: column; align-items: center; }
+
+  .banner {
+    margin-top: 14px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-size: 14px;
+    text-align: center;
+  }
+  .step { color: var(--muted); font-size: 15px; margin: 14px 0 4px; text-align: center; min-height: 1.4em; }
+
+  .crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    margin: 6px 0;
+  }
+  .crumbs button {
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  .crumbs .sep { color: var(--muted); }
+
+  .stage { position: relative; width: 100%; max-width: min(640px, 70vh); aspect-ratio: 1; transition: max-width .6s ease; }
+  .stage.small { max-width: min(400px, 50vh); }
+  .halo {
+    position: absolute;
+    inset: 4%;
+    filter: blur(34px);
+    opacity: 0;
+    transition: opacity .9s ease;
+    -webkit-mask: radial-gradient(closest-side, transparent 38%, #000 58%, #000 72%, transparent 96%);
+            mask: radial-gradient(closest-side, transparent 38%, #000 58%, #000 72%, transparent 96%);
+  }
+  .halo.on { opacity: var(--halo-opacity); }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; user-select: none; -webkit-user-select: none; }
+  .hit { fill: transparent; cursor: pointer; touch-action: none; outline: none; }
+  .hit:focus-visible { stroke: var(--text); stroke-width: 2; stroke-dasharray: 4 6; }
+  svg.dragging .hit { cursor: grabbing; }
+  .label text {
+    pointer-events: none;
+    font-family: "Syne Mono", ui-monospace, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", monospace;
+    font-weight: 400;
+    letter-spacing: .01em;
+    /* Ink is a deep shade of the cloud's own hue, set per label */
+    fill: var(--ink, #56608a);
+    fill-opacity: .86;
+    paint-order: stroke;
+    stroke: rgba(255, 255, 255, .35);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .label text.sub { fill-opacity: .7; }
+  #labels { filter: url(#f-glow); }
+  /* Chinese cloud labels use ZCOOL KuaiLe */
+  :root:lang(zh) .label text { font-family: "ZCOOL KuaiLe", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; letter-spacing: 0; }
+  .drag-hint { width: 100%; text-align: center; color: var(--muted); font-size: 13px; margin: 0; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .btn {
+    font: inherit;
+    font-size: 15px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .btn.small { font-size: 13px; padding: 6px 12px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+
+  /* Result */
+  .result { width: 100%; max-width: 680px; margin-top: 22px; display: flex; flex-direction: column; gap: 26px; }
+  .card {
+    -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px 34px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 0 0 26px; font-size: 17px; text-align: center; }
+  .eyebrow { margin: 0; color: var(--muted); font-size: 14px; }
+  .r-head { text-align: center; }
+  .r-head h2 { margin: 10px 0 8px; font-size: 28px; display: inline-flex; align-items: center; gap: 10px; }
+  .swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; }
+  .r-head .path { margin: 0 0 24px; color: var(--muted); }
+  .transition {
+    margin: 0 auto 22px;
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 14px;
+  }
+
+  .intensity { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .intensity label { font-size: 14px; color: var(--muted); }
+  .intensity .row { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 360px; }
+  .intensity input { flex: 1; accent-color: var(--accent); }
+  .intensity .val { font-weight: 700; min-width: 3.2em; text-align: right; }
+
+  .crisis {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 20px;
+    padding: 22px 26px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .crisis strong { display: block; margin-bottom: 2px; }
+  .crisis a { color: inherit; }
+
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 36px; }
+  .facts .wide { grid-column: 1 / -1; }
+  .facts h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  /* Chinese has no capitals to set headings apart, so they match the card title instead */
+  :root:lang(zh) .facts h4 { font-size: 17px; font-weight: 600; letter-spacing: 0; color: var(--text); margin-bottom: 8px; }
+  .facts p, .facts li { margin: 0; line-height: 1.7; font-size: 15px; }
+  .facts li + li { margin-top: 6px; }
+  .facts .sub { color: var(--muted); font-size: 14px; margin-top: 10px; }
+  .facts ul { margin: 0; padding-left: 18px; }
+
+  .paths { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .path-btn {
+    font: inherit;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 18px;
+    padding: 22px 16px;
+    cursor: pointer;
+  }
+  .path-btn .ico { font-size: 20px; }
+  .path-btn b { display: block; margin: 10px 0 6px; font-size: 15px; }
+  .path-btn span.d { color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .path-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-2); }
+
+  .panel { margin-top: 30px; display: flex; flex-direction: column; gap: 24px; }
+  .panel ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 14px; line-height: 1.7; }
+  .panel .intro { margin: 0; color: var(--muted); }
+  .q label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 10px; line-height: 1.5; }
+  .q .hint { color: var(--muted); font-size: 13px; margin: 0 0 10px; line-height: 1.55; }
+  textarea {
+    width: 100%;
+    min-height: 64px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    resize: vertical;
+  }
+  .check { display: flex; gap: 12px; align-items: flex-start; line-height: 1.65; cursor: pointer; }
+  .check input { margin-top: 4px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
+
+  .save-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin-top: 22px; }
+  .save-card { text-align: center; }
+  .saved-msg { color: var(--muted); font-size: 14px; line-height: 1.65; margin: 16px 0 0; }
+  .fine { color: var(--muted); font-size: 12px; margin: 14px 0 0; }
+
+  /* History */
+  .history { max-width: 720px; margin: 22px auto 0; display: flex; flex-direction: column; gap: 24px; }
+  .history h2 { margin: 0; font-size: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .stat { -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; box-shadow: var(--shadow); }
+  .stat .n { font-size: 24px; font-weight: 700; }
+  .stat .l { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .bars { display: flex; flex-direction: column; gap: 12px; }
+  .bar { display: grid; grid-template-columns: 76px 1fr 28px; align-items: center; gap: 10px; font-size: 14px; }
+  .bar .track { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 999px; }
+  .bar .c { text-align: right; color: var(--muted); }
+  .entry { display: flex; flex-direction: column; gap: 10px; }
+  .entry .top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .entry .when { color: var(--muted); font-size: 13px; }
+  .entry .name { font-weight: 700; font-size: 17px; display: inline-flex; align-items: center; gap: 8px; }
+  .entry .meta { color: var(--muted); font-size: 14px; }
+  .entry .note { margin: 0; font-size: 14px; line-height: 1.5; }
+  .entry .btns { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+  .tag { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text); }
+  .empty { color: var(--muted); text-align: center; padding: 30px 0; }
+
+  @media (max-width: 560px) {
+    .facts, .paths, .stats { grid-template-columns: 1fr; }
+    .card { padding: 26px 22px; }
+    header h1 { font-size: 18px; }
+  }
+  /* Account */
+  .account { max-width: 460px; margin: 30px auto 0; }
+  .auth { display: flex; flex-direction: column; gap: 20px; text-align: center; }
+  .auth h2 { margin: 0; font-size: 24px; }
+  .auth-sub { margin: -6px 0 6px; color: var(--muted); line-height: 1.65; }
+  .field { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+  .field label { font-weight: 600; font-size: 14px; }
+  .field input {
+    font: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+  }
+  .auth-error { margin: 0; color: #d4553a; font-size: 14px; line-height: 1.5; min-height: 1.5em; }
+  .auth .btn.primary { align-self: center; min-width: 180px; }
+  .link { background: none; border: 0; padding: 4px; color: var(--text); text-decoration: underline; text-underline-offset: 3px; font: inherit; font-size: 14px; cursor: pointer; }
+  .history-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .who { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="haze" aria-hidden="true"><span></span><span></span><span></span></div>
+<header>
+  <h1 id="title">Feelings Wheel</h1>
+  <div class="header-right">
+    <button type="button" class="nav-btn" id="navBtn"></button>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="zh" aria-pressed="false">中文</button>
+      <button type="button" data-lang="pt" aria-pressed="false">PT</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="wheelView">
+    <div class="banner" id="banner" hidden></div>
+    <div class="step" id="step"></div>
+    <nav class="crumbs" id="crumbs" aria-label="Path"></nav>
+    <div class="stage" id="stage">
+      <div class="halo" id="haloA"></div>
+      <div class="halo" id="haloB"></div>
+      <svg id="sky" viewBox="-340 -340 680 680" role="group">
+        <defs id="defs"></defs>
+        <g id="lBack" filter="url(#f-back)"></g>
+        <g id="lMid" filter="url(#f-mid)"></g>
+        <g id="lFront" filter="url(#f-front)"></g>
+        <g id="labels"></g>
+        <g id="hits"></g>
+      </svg>
+    </div>
+    <div class="actions" id="actions"></div>
+    <div class="result" id="result" hidden></div>
+  </section>
+  <section id="historyView" class="history" hidden></section>
+  <section id="accountView" class="account" hidden></section>
+</main>
+
+<script src="content.js"></script>
+<script src="content-pt.js"></script>
+<script>
+// [en, zh, color?, children?] — core → secondary → specific
+const RAW = [
+  ['Happy', '快乐', '#F4B63F', [
+    ['Playful', '顽皮', [['Aroused', '激动'], ['Cheeky', '调皮']]],
+    ['Content', '满足', [['Free', '自由'], ['Joyful', '喜悦']]],
+    ['Interested', '感兴趣', [['Curious', '好奇'], ['Inquisitive', '求知']]],
+    ['Proud', '自豪', [['Successful', '成功'], ['Confident', '自信']]],
+    ['Accepted', '被接纳', [['Respected', '被尊重'], ['Valued', '被重视']]],
+    ['Powerful', '有力量', [['Courageous', '勇敢'], ['Creative', '有创造力']]],
+    ['Peaceful', '平静', [['Loving', '充满爱'], ['Thankful', '感恩']]],
+    ['Trusting', '信任', [['Sensitive', '敏感'], ['Intimate', '亲密']]],
+    ['Optimistic', '乐观', [['Hopeful', '充满希望'], ['Inspired', '受鼓舞']]],
+  ]],
+  ['Surprised', '惊讶', '#3BB8A6', [
+    ['Startled', '吃惊', [['Shocked', '震惊'], ['Dismayed', '惊愕']]],
+    ['Confused', '困惑', [['Disillusioned', '幻灭'], ['Perplexed', '茫然']]],
+    ['Amazed', '惊叹', [['Astonished', '惊奇'], ['Awe', '敬畏']]],
+    ['Excited', '兴奋', [['Eager', '渴望'], ['Energetic', '精力充沛']]],
+  ]],
+  ['Bad', '糟糕', '#8B9099', [
+    ['Bored', '无聊', [['Indifferent', '冷漠'], ['Apathetic', '漠然']]],
+    ['Busy', '忙碌', [['Pressured', '有压力'], ['Rushed', '匆忙']]],
+    ['Stressed', '压力大', [['Overwhelmed', '喘不过气'], ['Out of control', '失控']]],
+    ['Tired', '疲惫', [['Sleepy', '困倦'], ['Unfocused', '无法专注']]],
+  ]],
+  ['Fearful', '恐惧', '#8C6BD6', [
+    ['Scared', '害怕', [['Helpless', '无助'], ['Frightened', '惊恐']]],
+    ['Anxious', '焦虑', [['Overwhelmed', '不堪重负'], ['Worried', '担忧']]],
+    ['Insecure', '不安', [['Inadequate', '不够好'], ['Inferior', '低人一等']]],
+    ['Weak', '软弱', [['Worthless', '毫无价值'], ['Insignificant', '微不足道']]],
+    ['Rejected', '被拒绝', [['Excluded', '被排斥'], ['Persecuted', '被迫害']]],
+    ['Threatened', '受威胁', [['Nervous', '紧张'], ['Exposed', '暴露']]],
+  ]],
+  ['Angry', '愤怒', '#E2553F', [
+    ['Let down', '失落', [['Betrayed', '被背叛'], ['Resentful', '怨恨']]],
+    ['Humiliated', '受辱', [['Disrespected', '不被尊重'], ['Ridiculed', '被嘲笑']]],
+    ['Bitter', '苦涩', [['Indignant', '愤慨'], ['Violated', '被侵犯']]],
+    ['Mad', '恼火', [['Furious', '暴怒'], ['Jealous', '嫉妒']]],
+    ['Aggressive', '好斗', [['Provoked', '被激怒'], ['Hostile', '充满敌意']]],
+    ['Frustrated', '挫败', [['Infuriated', '气愤'], ['Annoyed', '烦躁']]],
+    ['Distant', '疏离', [['Withdrawn', '退缩'], ['Numb', '麻木']]],
+    ['Critical', '挑剔', [['Skeptical', '怀疑'], ['Dismissive', '轻视']]],
+  ]],
+  ['Disgusted', '厌恶', '#7DAE48', [
+    ['Disapproving', '不认同', [['Judgmental', '评判'], ['Embarrassed', '尴尬']]],
+    ['Disappointed', '失望', [['Appalled', '震惊'], ['Revolted', '反感']]],
+    ['Awful', '难受', [['Nauseated', '恶心'], ['Detestable', '憎恶']]],
+    ['Repelled', '排斥', [['Horrified', '惊骇'], ['Hesitant', '犹豫']]],
+  ]],
+  ['Sad', '悲伤', '#5A8BE8', [
+    ['Lonely', '孤独', [['Isolated', '孤立'], ['Abandoned', '被抛弃']]],
+    ['Vulnerable', '脆弱', [['Victimized', '受伤害'], ['Fragile', '易碎']]],
+    ['Despair', '绝望', [['Grief', '哀痛'], ['Powerless', '无力']]],
+    ['Guilty', '内疚', [['Ashamed', '羞愧'], ['Remorseful', '懊悔']]],
+    ['Depressed', '消沉', [['Inferior', '自卑'], ['Empty', '空虚']]],
+    ['Hurt', '受伤', [['Embarrassed', '难堪'], ['Disappointed', '失望']]],
+  ]],
+];
+
+const UI = {
+  en: {
+    title: 'Feelings Wheel',
+    prompt: ['How are you', 'feeling?'],
+    step0: 'Step 1 · Start with the broad feeling that fits best',
+    step1: 'Step 2 · Which of these is closer?',
+    step2: 'Step 3 · Find the most precise word',
+    stepDone: 'You named it.',
+    start: 'Start',
+    back: 'Back',
+    thisIsIt: "That's it",
+    restart: 'Start over',
+    youFeel: 'You are feeling',
+    tapCenter: 'tap to go back',
+    dragHint: 'Drag the clouds to spin them · tap one to open it',
+    navHistory: 'My check-ins',
+    navWheel: 'Back to wheel',
+    intensity: 'How strong is it right now?',
+    understandTitle: 'Understand this feeling',
+    meaning: 'What it means',
+    partOf: 'Part of',
+    body: 'Where you may feel it',
+    when: 'When it often shows up',
+    telling: 'What it may be telling you',
+    crisisTitle: "You don't have to carry this alone.",
+    crisis: "If this feeling is very heavy, or you're having thoughts of harming yourself, please reach out now. In the US, call or text 988. In mainland China, call 12356. Elsewhere, find a local line at",
+    crisisEnd: 'or contact your local emergency number.',
+    pathsTitle: 'What would you like to do with it?',
+    stay: ['🌱', 'Stay with it', 'Accept it and let it be here'],
+    understand: ['🔍', 'Understand it', 'Explore where it comes from'],
+    shift: ['🔄', 'Shift it', 'Gently move toward something else'],
+    carry: ['✨', 'Carry it forward', 'Make the most of this feeling'],
+    staySteps: [
+      'Name it. Say to yourself: “I’m feeling {f}.”',
+      'Find it in your body. Where is it strongest? Common places: {body}',
+      'Breathe in for 4 counts and out for 6, five times.',
+    ],
+    staySentence: 'Finish this sentence kindly',
+    staySentencePh: 'It makes sense that I feel {f} because…',
+    questions: [
+      'What happened just before you noticed this feeling?',
+      'What thought or story came with it?',
+      'What need might be going unmet?',
+    ],
+    hint: 'A clue',
+    shiftIntro: 'Pick one or two to try. You can tick them off.',
+    note: 'Anything else about what happened? (optional)',
+    save: 'Save check-in',
+    savedBtn: 'Saved ✓',
+    saved: 'Saved. Come back in a while and re-check — feelings move, and noticing that change is part of the process.',
+    viewHistory: 'View my check-ins',
+    localOnly: 'Check-ins are saved only in this browser on this device.',
+    recheckBanner: 'Re-check · Earlier you felt {f} ({n}/10). How do you feel now?',
+    transition: 'Earlier: {a} ({n}/10) → Now: {b} ({m}/10)',
+    historyTitle: 'My check-ins',
+    empty: 'No check-ins yet. Name a feeling on the wheel and save it to start tracking.',
+    statWeek: 'check-ins in the last 7 days',
+    statChange: 'average intensity change on re-check',
+    statPath: 'most chosen approach',
+    mix: 'Feelings in the last 30 days',
+    recheck: 'How do I feel now?',
+    del: 'Delete',
+    confirmDel: 'Delete this check-in?',
+    recheckOf: 'Re-check of',
+    laterFelt: 'Later',
+    none: '—',
+    colon: ': ',
+    authTitleUp: 'Create your account',
+    authSubUp: 'Follow your own emotion journey over time. Pick any nickname — no real name needed.',
+    authTitleIn: 'Welcome back',
+    authSubIn: 'Sign in to see your check-ins.',
+    nickname: 'Nickname',
+    email: 'Email',
+    password: 'Password',
+    pwHint: 'At least 8 characters',
+    createBtn: 'Create account',
+    signInBtn: 'Sign in',
+    toSignIn: 'Already have an account? Sign in',
+    toSignUp: 'New here? Create an account',
+    errNick: 'Choose a nickname of 2–30 characters.',
+    errEmail: 'Enter a valid email address.',
+    errPw: 'Use at least 8 characters for your password.',
+    errTaken: 'An account with this email already exists on this device. Try signing in.',
+    errLogin: "That email and password don't match an account on this device.",
+    errCrypto: "This browser can't create accounts securely. Open the app through http://localhost in an up-to-date browser.",
+    authLocal: 'For now, your account and check-ins are stored only in this browser on this device.',
+    hello: 'Hi, {n}',
+    signOut: 'Sign out',
+  },
+  zh: {
+    title: '情绪轮',
+    prompt: ['你现在', '感觉如何？'],
+    step0: '第一步 · 先选择最贴近的大类情绪',
+    step1: '第二步 · 哪一个更接近？',
+    step2: '第三步 · 找到最准确的词',
+    stepDone: '你找到了它。',
+    start: '开始',
+    back: '返回',
+    thisIsIt: '就是这个',
+    restart: '重新开始',
+    youFeel: '你现在的感受是',
+    tapCenter: '点击返回',
+    dragHint: '拖动云朵可以旋转 · 点击一朵云展开',
+    navHistory: '我的记录',
+    navWheel: '返回情绪轮',
+    intensity: '此刻它有多强烈？',
+    understandTitle: '理解这种感受',
+    meaning: '它是什么意思',
+    partOf: '属于',
+    body: '你可能在哪里感受到它',
+    when: '它常在什么时候出现',
+    telling: '它可能在告诉你什么',
+    crisisTitle: '你不必独自承受。',
+    crisis: '如果这种感受非常沉重，或者你有伤害自己的念头，请现在就寻求帮助。中国大陆请拨打 12356 心理援助热线；美国请拨打或发短信至 988。其他地区可在',
+    crisisEnd: '查找当地热线，或拨打当地紧急电话。',
+    pathsTitle: '你想怎样对待这种感受？',
+    stay: ['🌱', '与它共处', '接纳它，允许它存在'],
+    understand: ['🔍', '理解它', '探索它从哪里来'],
+    shift: ['🔄', '转化它', '温和地走向别的状态'],
+    carry: ['✨', '延续它', '让这份感受发挥更大作用'],
+    staySteps: [
+      '为它命名。对自己说：“我感到{f}。”',
+      '在身体里找到它。哪里最明显？常见的地方：{body}',
+      '吸气数4下，呼气数6下，重复五次。',
+    ],
+    staySentence: '温柔地补全这句话',
+    staySentencePh: '我感到{f}是可以理解的，因为……',
+    questions: [
+      '在你察觉到这种感受之前，发生了什么？',
+      '伴随它出现的是什么想法或故事？',
+      '可能有什么需求没有被满足？',
+    ],
+    hint: '提示',
+    shiftIntro: '选一两个试试，完成后可以打勾。',
+    note: '关于发生了什么，还有想补充的吗？（可选）',
+    save: '保存记录',
+    savedBtn: '已保存 ✓',
+    saved: '已保存。过一段时间再回来看看——情绪会流动，察觉这种变化本身就是过程的一部分。',
+    viewHistory: '查看我的记录',
+    localOnly: '记录只保存在这台设备的浏览器中。',
+    recheckBanner: '再次觉察 · 之前你感到{f}（{n}/10）。现在感觉如何？',
+    transition: '之前：{a}（{n}/10）→ 现在：{b}（{m}/10）',
+    historyTitle: '我的记录',
+    empty: '还没有记录。在情绪轮上找到你的感受并保存，就可以开始追踪。',
+    statWeek: '最近7天的记录',
+    statChange: '再次觉察时的平均强度变化',
+    statPath: '最常选择的方式',
+    mix: '最近30天的情绪',
+    recheck: '现在感觉如何？',
+    del: '删除',
+    confirmDel: '删除这条记录？',
+    recheckOf: '再次觉察自',
+    laterFelt: '之后',
+    none: '—',
+    colon: '：',
+    authTitleUp: '创建你的账户',
+    authSubUp: '随时回顾你的情绪旅程。取一个昵称即可，无需真实姓名。',
+    authTitleIn: '欢迎回来',
+    authSubIn: '登录以查看你的记录。',
+    nickname: '昵称',
+    email: '邮箱',
+    password: '密码',
+    pwHint: '至少 8 个字符',
+    createBtn: '创建账户',
+    signInBtn: '登录',
+    toSignIn: '已有账户？登录',
+    toSignUp: '第一次来？创建账户',
+    errNick: '请输入 2–30 个字符的昵称。',
+    errEmail: '请输入有效的邮箱地址。',
+    errPw: '密码至少需要 8 个字符。',
+    errTaken: '这台设备上已有使用该邮箱的账户，请尝试登录。',
+    errLogin: '邮箱或密码与这台设备上的账户不匹配。',
+    errCrypto: '此浏览器无法安全地创建账户。请在较新的浏览器中通过 http://localhost 打开。',
+    authLocal: '目前，你的账户和记录只保存在这台设备的浏览器中。',
+    hello: '你好，{n}',
+    signOut: '退出登录',
+  },
+  pt: {
+    title: 'Roda das Emoções',
+    prompt: ['Como você está', 'se sentindo?'],
+    step0: 'Passo 1 · Comece pela emoção ampla que mais combina',
+    step1: 'Passo 2 · Qual destas está mais perto?',
+    step2: 'Passo 3 · Encontre a palavra mais precisa',
+    stepDone: 'Você deu nome a ela.',
+    start: 'Início',
+    back: 'Voltar',
+    thisIsIt: 'É isso',
+    restart: 'Recomeçar',
+    youFeel: 'Você está se sentindo',
+    tapCenter: 'toque para voltar',
+    dragHint: 'Arraste as nuvens para girá-las · toque em uma para abri-la',
+    navHistory: 'Meus registros',
+    navWheel: 'Voltar à roda',
+    intensity: 'Quão forte isso está agora?',
+    understandTitle: 'Entenda este sentimento',
+    meaning: 'O que significa',
+    partOf: 'Parte de',
+    body: 'Onde você pode senti-lo',
+    when: 'Quando costuma aparecer',
+    telling: 'O que ele pode estar dizendo',
+    crisisTitle: 'Você não precisa carregar isso sozinho.',
+    crisis: 'Se esse sentimento estiver muito pesado, ou se você estiver pensando em se machucar, procure ajuda agora. No Brasil, ligue 188 (CVV, 24 horas). Em Portugal, ligue 808 24 24 24 (SNS 24). Em outros lugares, encontre uma linha local em',
+    crisisEnd: 'ou ligue para o número de emergência local.',
+    pathsTitle: 'O que você gostaria de fazer com ele?',
+    stay: ['🌱', 'Ficar com ele', 'Aceitar e deixá-lo estar aqui'],
+    understand: ['🔍', 'Entendê-lo', 'Explorar de onde ele vem'],
+    shift: ['🔄', 'Transformá-lo', 'Ir com calma em direção a outra coisa'],
+    carry: ['✨', 'Levá-lo adiante', 'Aproveitar ao máximo este sentimento'],
+    staySteps: [
+      'Dê um nome. Diga a si mesmo: “Estou me sentindo {f}.”',
+      'Encontre-o no corpo. Onde ele está mais forte? Lugares comuns: {body}',
+      'Inspire contando até 4 e expire contando até 6, cinco vezes.',
+    ],
+    staySentence: 'Complete esta frase com gentileza',
+    staySentencePh: 'Faz sentido eu me sentir {f} porque…',
+    questions: [
+      'O que aconteceu logo antes de você perceber este sentimento?',
+      'Que pensamento ou história veio junto com ele?',
+      'Que necessidade pode não estar sendo atendida?',
+    ],
+    hint: 'Uma pista',
+    shiftIntro: 'Escolha uma ou duas para tentar. Você pode marcá-las.',
+    note: 'Mais alguma coisa sobre o que aconteceu? (opcional)',
+    save: 'Salvar registro',
+    savedBtn: 'Salvo ✓',
+    saved: 'Salvo. Volte daqui a pouco e faça um novo registro — sentimentos se movem, e perceber essa mudança faz parte do processo.',
+    viewHistory: 'Ver meus registros',
+    localOnly: 'Os registros ficam salvos apenas neste navegador, neste dispositivo.',
+    recheckBanner: 'Novo olhar · Antes você se sentia {f} ({n}/10). Como você se sente agora?',
+    transition: 'Antes: {a} ({n}/10) → Agora: {b} ({m}/10)',
+    historyTitle: 'Meus registros',
+    empty: 'Ainda não há registros. Dê nome a um sentimento na roda e salve para começar a acompanhar.',
+    statWeek: 'registros nos últimos 7 dias',
+    statChange: 'mudança média de intensidade ao rever',
+    statPath: 'abordagem mais escolhida',
+    mix: 'Sentimentos nos últimos 30 dias',
+    recheck: 'Como me sinto agora?',
+    del: 'Excluir',
+    confirmDel: 'Excluir este registro?',
+    recheckOf: 'Novo olhar sobre',
+    laterFelt: 'Depois',
+    none: '—',
+    colon: ': ',
+    authTitleUp: 'Crie sua conta',
+    authSubUp: 'Acompanhe sua jornada emocional ao longo do tempo. Escolha qualquer apelido — não precisa do nome real.',
+    authTitleIn: 'Que bom ver você de novo',
+    authSubIn: 'Entre para ver seus registros.',
+    nickname: 'Apelido',
+    email: 'E-mail',
+    password: 'Senha',
+    pwHint: 'Pelo menos 8 caracteres',
+    createBtn: 'Criar conta',
+    signInBtn: 'Entrar',
+    toSignIn: 'Já tem uma conta? Entrar',
+    toSignUp: 'Primeira vez aqui? Crie uma conta',
+    errNick: 'Escolha um apelido de 2 a 30 caracteres.',
+    errEmail: 'Digite um e-mail válido.',
+    errPw: 'Use pelo menos 8 caracteres na senha.',
+    errTaken: 'Já existe uma conta com este e-mail neste dispositivo. Tente entrar.',
+    errLogin: 'Esse e-mail e senha não correspondem a nenhuma conta neste dispositivo.',
+    errCrypto: 'Este navegador não consegue criar contas com segurança. Abra o app por http://localhost num navegador atualizado.',
+    authLocal: 'Por enquanto, sua conta e seus registros ficam salvos apenas neste navegador, neste dispositivo.',
+    hello: 'Olá, {n}',
+    signOut: 'Sair',
+  },
+};
+
+function build(arr, depth, core) {
+  return arr.map(([en, zh, a, b]) => {
+    const color = typeof a === 'string' ? a : null;
+    const kids = Array.isArray(a) ? a : b;
+    const node = { en, zh, depth };
+    node.core = core || node;
+    node.base = color || node.core.base;
+    node.pt = PT_NAMES[en] || en;
+    node.children = kids ? build(kids, depth + 1, node.core) : [];
+    return node;
+  }).map((node, i, all) => {
+    // Siblings drift a little around their core hue so the cloud ring blends instead of looking flat
+    if (depth > 0) node.base = hueShift(node.base, all.length > 1 ? (i / (all.length - 1) - 0.5) * 40 : 0);
+    return node;
+  });
+}
+const DATA = build(RAW, 0, null);
+
+// ---------- Storage ----------
+// Check-ins live under the signed-in account; before signing in they're kept as a guest
+const GUEST_KEY = 'fw-entries';
+const entriesKey = () => (session ? `fw-entries:${session}` : GUEST_KEY);
+const memoryStore = {};
+function readJSON(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (e) { return memoryStore[key] ?? fallback; }
+}
+function writeJSON(key, value) {
+  memoryStore[key] = value;
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+}
+function loadEntries() { return readJSON(entriesKey(), []); }
+function saveEntries(list) { writeJSON(entriesKey(), list); }
+
+// ---------- Accounts ----------
+// Local-only for now: accounts live in this browser. signUp / signIn / signOut
+// are the seam to swap for a real backend later.
+const ACCOUNTS_KEY = 'fw-accounts';
+const SESSION_KEY = 'fw-session';
+let session = null;
+try { session = localStorage.getItem(SESSION_KEY); } catch (e) {}
+
+function currentAccount() {
+  return (session && readJSON(ACCOUNTS_KEY, []).find(a => a.id === session)) || null;
+}
+const toHex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+// Passwords are never stored, only a salted PBKDF2 hash
+async function hashPassword(password, saltHex) {
+  const salt = Uint8Array.from(saltHex.match(/../g).map(x => parseInt(x, 16)));
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  return toHex(await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' }, key, 256));
+}
+async function signUp(nickname, email, password) {
+  const accounts = readJSON(ACCOUNTS_KEY, []);
+  if (accounts.some(a => a.email === email)) throw 'errTaken';
+  const salt = toHex(crypto.getRandomValues(new Uint8Array(16)));
+  const account = { id: crypto.randomUUID(), nickname, email, salt, hash: await hashPassword(password, salt), created: Date.now() };
+  writeJSON(ACCOUNTS_KEY, [...accounts, account]);
+  startSession(account.id);
+}
+async function signIn(email, password) {
+  const account = readJSON(ACCOUNTS_KEY, []).find(a => a.email === email);
+  if (!account || await hashPassword(password, account.salt) !== account.hash) throw 'errLogin';
+  startSession(account.id);
+}
+// Check-ins saved before signing in move into the account
+function startSession(id) {
+  const guest = readJSON(GUEST_KEY, []);
+  session = id;
+  try { localStorage.setItem(SESSION_KEY, id); } catch (e) {}
+  if (guest.length) {
+    saveEntries([...guest, ...loadEntries()].sort((a, b) => b.ts - a.ts));
+    writeJSON(GUEST_KEY, []);
+  }
+}
+function signOut() {
+  session = null;
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+}
+
+// ---------- State ----------
+let lang = 'en';
+try { const saved = localStorage.getItem('fw-lang'); if (saved === 'zh' || saved === 'pt') lang = saved; } catch (e) {}
+let view = 'wheel';
+let path = [];
+let done = false;
+let recheckOf = null;   // id of the entry being re-checked
+let draft = newDraft();
+
+function newDraft() {
+  return { intensity: 5, approach: null, answers: {}, tried: [], note: '', savedId: null };
+}
+
+const $ = id => document.getElementById(id);
+const svg = $('sky');
+const NS = 'http://www.w3.org/2000/svg';
+const L = () => ({ en: 0, zh: 1, pt: 2 })[lang];
+const LOCALE = { en: 'en', zh: 'zh-CN', pt: 'pt-BR' };
+const label = node => node[lang];
+const fmt = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function findNodes(names) {
+  const out = [];
+  let list = DATA;
+  for (const n of names) {
+    const node = list.find(x => x.en === n);
+    if (!node) break;
+    out.push(node);
+    list = node.children;
+  }
+  return out;
+}
+
+// ---------- Colour ----------
+function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
+function mix(a, b, t) {
+  const x = rgb(a), y = rgb(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+function hueShift(hex, deg) {
+  const [r, g, b] = rgb(hex).map(v => v / 255);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  let h = 0, s = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  }
+  h = (h * 60 + deg + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return '#' + [r1, g1, b1].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+}
+// Swatch colour used in the result and history
+function fill(node) { return mix(node.base, '#ffffff', [0, 0.3, 0.55][node.depth]); }
+
+// HTML element helper: h('div', {class: 'x', onclick: fn}, ...children)
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in props || {}) {
+    const v = props[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'style') e.style.cssText = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  kids.flat().forEach(c => { if (c != null && c !== false) e.append(c); });
+  return e;
+}
+function svgEl(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+// ---------- Cloud wheel ----------
+const R = 200;            // orbit radius of the ring clouds
+const CENTER = 92;        // visual radius of the centre cloud
+const FINAL = 140;        // visual radius once a feeling is named
+
+// svg-clouds technique: blur the shape, then push its pixels around with
+// fractal noise whose channels are hue-rotated over time so the edges billow.
+function cloudFilter(id, { seed, freq, octaves, blur, scale, dur }) {
+  const anim = reduceMotion ? '' : `<animate attributeName="values" values="0;360" dur="${dur}" repeatCount="indefinite"/>`;
+  return `<filter id="${id}" filterUnits="userSpaceOnUse" x="-340" y="-340" width="680" height="680">
+    <feTurbulence type="fractalNoise" seed="${seed}" baseFrequency="${freq}" numOctaves="${octaves}" result="base"/>
+    <feColorMatrix in="base" type="hueRotate" values="0" result="shifted">${anim}</feColorMatrix>
+    <feColorMatrix in="shifted" result="tex" type="matrix" values="1 0 0 0 -1  1 0 0 0 -1  1 0 0 0 -1  1 0 0 0 0"/>
+    <feGaussianBlur in="SourceGraphic" result="soft" stdDeviation="${blur}"/>
+    <feDisplacementMap in="soft" in2="tex" scale="${scale}" result="cloud"/>
+    <feGaussianBlur in="cloud" stdDeviation="1.6"/>
+  </filter>`;
+}
+$('defs').innerHTML =
+  cloudFilter('f-back', { seed: 3, freq: 0.012, octaves: 3, blur: 13, scale: 95, dur: '34s' }) +
+  cloudFilter('f-mid', { seed: 7, freq: 0.014, octaves: 3, blur: 9, scale: 70, dur: '26s' }) +
+  cloudFilter('f-front', { seed: 11, freq: 0.018, octaves: 3, blur: 7, scale: 48, dur: '19s' }) +
+  // Soft white haze behind the cloud labels
+  `<filter id="f-glow" filterUnits="userSpaceOnUse" x="-340" y="-340" width="680" height="680">
+    <feGaussianBlur in="SourceGraphic" stdDeviation="2.6" result="b"/>
+    <feColorMatrix in="b" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .6 0" result="w"/>
+    <feMerge><feMergeNode in="w"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>`;
+
+// Shadow underneath, soft body, bright highlight on top
+function palette(node) {
+  if (!node) return { back: '#c3cde4', mid: '#eef2fb', front: '#ffffff' };
+  const body = mix(node.base, '#ffffff', 0.28 + 0.16 * node.depth);
+  return { back: mix(body, '#55618a', 0.32), mid: body, front: mix(node.base, '#ffffff', 0.84) };
+}
+
+const layers = [$('lBack'), $('lMid'), $('lFront')];
+let clouds = [];
+
+// A cloud is a cluster of overlapping puffs; the filters make it billow
+function puff(layer, size, color, dx, dy) {
+  const g = svgEl('g', null, layer);
+  const inner = svgEl('g', { transform: `translate(${dx} ${dy})` }, g);
+  [[-0.56, 0.12, 0.5], [-0.05, -0.14, 0.7], [0.52, 0.06, 0.56], [0.08, 0.24, 0.58]]
+    .forEach(([x, y, r]) => svgEl('circle', { cx: x * size, cy: y * size, r: r * size, fill: color }, inner));
+  return g;
+}
+
+function makeCloud(node, size, angle) {
+  const p = palette(node);
+  const c = {
+    node, size, a0: angle,
+    r: 0, s: 0.2, o: 0,
+    t: { r: 0, s: 1, o: 1 },
+    delay: 0, phase: Math.random() * Math.PI * 2,
+    hover: false, fixed: false, center: false, dead: false,
+  };
+  c.parts = [
+    puff(layers[0], size * 1.04, p.back, size * 0.1, size * 0.2),
+    puff(layers[1], size, p.mid, 0, 0),
+    puff(layers[2], size * 0.68, p.front, -size * 0.14, -size * 0.2),
+  ];
+  c.label = svgEl('g', { class: 'label' }, $('labels'));
+  c.hit = svgEl('circle', { class: 'hit', r: size, tabindex: 0, role: 'button' }, $('hits'));
+  c.hit.addEventListener('pointerdown', startDrag);
+  c.hit.addEventListener('click', () => { if (!dragged) activate(c); });
+  c.hit.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(c); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rot += e.key === 'ArrowRight' ? 15 : -15; }
+  });
+  c.hit.addEventListener('pointerenter', () => { c.hover = true; });
+  c.hit.addEventListener('pointerleave', () => { c.hover = false; });
+  clouds.push(c);
+  return c;
+}
+
+function setLabel(c) {
+  const t = UI[lang];
+  c.label.innerHTML = '';
+  let lines, size, sub = null;
+  if (!c.node) { lines = t.prompt; size = 21; }
+  else if (c.center) {
+    lines = [label(c.node)];
+    size = done ? 34 : 26;
+    if (!done) sub = t.tapCenter;
+  } else {
+    const name = label(c.node);
+    lines = lang !== 'zh' && name.length > 11 && name.includes(' ') ? name.split(' ') : [name];
+    // Syne Mono runs wide, so English ring labels sit a little smaller
+    size = lang !== 'zh' ? Math.max(14, Math.min(19, c.size * 0.26)) : Math.max(15, Math.min(21, c.size * 0.3));
+  }
+  c.label.style.setProperty('--ink', c.node ? mix(c.node.base, '#2e2a55', 0.5) : '#56608a');
+  const lh = size * 1.18;
+  const total = lines.length * lh + (sub ? 18 : 0);
+  lines.forEach((ln, i) => {
+    svgEl('text', { x: 0, y: -total / 2 + lh * (i + 0.5), 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': size }, c.label).textContent = ln;
+  });
+  if (sub) svgEl('text', { class: 'sub', x: 0, y: total / 2 - 7, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 12 }, c.label).textContent = sub;
+  c.hit.setAttribute('aria-label', c.node ? label(c.node) : t.prompt.join(' '));
+}
+
+// Send a cloud away: outward when going deeper, inward when stepping back
+function retire(c, inward) {
+  c.dead = true;
+  c.hover = false;
+  if (c.center) c.t = { r: 0, s: c.s * 0.5, o: 0 };
+  else c.t = inward ? { r: R * 0.35, s: 0.35, o: 0 } : { r: R * 1.5, s: 0.6, o: 0 };
+}
+
+// Freeze the current spin into each cloud's own angle, so a new ring starts upright
+function freezeSpin() {
+  clouds.forEach(c => { if (!c.fixed) { c.a0 += rot; c.fixed = true; } });
+  rot = 0;
+  coastV = 0;
+}
+
+function makeCenter(node, grow) {
+  const c = makeCloud(node, 70, 0);
+  c.center = true;
+  c.fixed = true;
+  c.s = grow ? 0.3 : 0.8;
+  c.t = { r: 0, s: CENTER / 70, o: 1 };
+  setLabel(c);
+  return c;
+}
+
+function makeRing(items, fromOutside, delay) {
+  const n = items.length;
+  const size = Math.min(80, (Math.PI * R / n) * 0.98);
+  const now = performance.now();
+  items.forEach((node, i) => {
+    const c = makeCloud(node, size, -90 + i * 360 / n);
+    if (fromOutside) { c.r = R * 1.5; c.s = 0.7; } else { c.r = R * 0.2; c.s = 0.25; }
+    c.t = { r: R, s: 1, o: 1 };
+    c.delay = now + delay + i * 55;
+    setLabel(c);
+  });
+  setHalo(items);
+}
+
+function activate(c) {
+  if (c.dead) return;
+  if (c.center) {
+    // The named cloud points down to its card instead of undoing the choice
+    if (done) $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    else if (c.node) back();
+    return;
+  }
+  choose(c);
+}
+
+// Soft colour band behind the ring, cross-faded between levels
+let haloFront = $('haloA'), haloBack = $('haloB');
+function setHalo(items) {
+  const step = 360 / items.length;
+  const tint = n => mix(n.base, '#ffffff', 0.15 + 0.12 * n.depth);
+  const stops = items.map((n, i) => `${tint(n)} ${i * step}deg`).concat(`${tint(items[0])} 360deg`);
+  [haloFront, haloBack] = [haloBack, haloFront];
+  haloFront.style.background = `conic-gradient(${stops.join(',')})`;
+  haloFront.classList.add('on');
+  haloBack.classList.remove('on');
+}
+function clearHalo() { haloFront.classList.remove('on'); haloBack.classList.remove('on'); }
+
+// ---------- Drag to spin ----------
+let rot = 0;            // ring rotation in degrees
+let coastV = 0;         // spin velocity after a flick, degrees per ms
+let dragging = false;
+let dragged = false;    // true right after a drag, so the release doesn't count as a click
+const DRIFT = reduceMotion ? 0 : 0.0028;   // idle drift, degrees per ms
+
+function pointerAngle(e) {
+  const r = svg.getBoundingClientRect();
+  return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI;
+}
+function startDrag(e) {
+  if (e.button !== 0) return;
+  // A tap on a still-spinning ring just stops it instead of opening a cloud
+  const wasCoasting = Math.abs(coastV) > 0.05;
+  coastV = 0;
+  dragging = true;
+  dragged = wasCoasting;
+  let last = pointerAngle(e), lastT = e.timeStamp, moved = 0, vel = 0;
+  // Listen on window rather than capturing, so a plain click still reaches the cloud
+  const move = ev => {
+    const a = pointerAngle(ev);
+    let d = a - last;
+    if (d > 180) d -= 360; else if (d < -180) d += 360;
+    last = a;
+    moved += Math.abs(d);
+    if (moved > 4 && !dragged) { dragged = true; svg.classList.add('dragging'); }
+    const dt = Math.max(ev.timeStamp - lastT, 1);
+    lastT = ev.timeStamp;
+    vel = 0.7 * vel + 0.3 * (d / dt);
+    rot += d;
+  };
+  const up = ev => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', up);
+    svg.classList.remove('dragging');
+    dragging = false;
+    if (dragged) {
+      coastV = ev.timeStamp - lastT > 80 ? 0 : Math.max(-1, Math.min(1, vel));
+      setTimeout(() => { dragged = false; }, 0);
+    }
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+}
+
+// ---------- Animation loop ----------
+let lastFrame = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(now - lastFrame, 50);
+  lastFrame = now;
+  if (view !== 'wheel') return;
+
+  if (!dragging) {
+    if (Math.abs(coastV) > 0.01) { rot += coastV * dt; coastV *= Math.pow(0.93, dt / 16); }
+    else {
+      coastV = 0;
+      if (!done && !clouds.some(c => c.hover && !c.dead)) rot += DRIFT * dt;
+    }
+  }
+
+  const ease = 1 - Math.exp(-dt / 150);
+  for (const c of clouds) {
+    if (now >= c.delay) for (const k of ['r', 's', 'o']) c[k] += (c.t[k] - c[k]) * ease;
+    const ang = (c.a0 + (c.fixed ? 0 : rot)) * Math.PI / 180;
+    const x = (c.r * Math.cos(ang)).toFixed(2), y = (c.r * Math.sin(ang)).toFixed(2);
+    const breathe = reduceMotion ? 1 : 1 + 0.03 * Math.sin(now * 0.0011 + c.phase);
+    const sc = c.s * breathe * (c.hover && !c.center ? 1.1 : 1);
+    const op = Math.max(0, Math.min(1, c.o)).toFixed(3);
+    c.parts.forEach(p => {
+      p.setAttribute('transform', `translate(${x} ${y}) scale(${sc.toFixed(4)})`);
+      p.setAttribute('opacity', op);
+    });
+    // Labels ride with their cloud but don't balloon when it grows
+    c.label.setAttribute('transform', `translate(${x} ${y}) scale(${Math.min(c.s, 1).toFixed(3)})`);
+    c.label.setAttribute('opacity', op);
+    c.hit.setAttribute('cx', x);
+    c.hit.setAttribute('cy', y);
+    c.hit.setAttribute('r', (c.size * sc * 0.85).toFixed(1));
+    c.hit.style.pointerEvents = c.dead || c.o < 0.4 ? 'none' : '';
+  }
+  // Drop clouds that have fully faded
+  clouds = clouds.filter(c => {
+    if (!(c.dead && c.o < 0.02)) return true;
+    c.parts.forEach(p => p.remove());
+    c.label.remove();
+    c.hit.remove();
+    return false;
+  });
+
+  $('haloA').style.transform = $('haloB').style.transform = `rotate(${rot}deg)`;
+}
+
+function renderChrome() {
+  const t = UI[lang];
+  document.documentElement.lang = LOCALE[lang];
+  document.title = t.title;
+  $('title').textContent = t.title;
+  $('navBtn').textContent = view === 'wheel' ? t.navHistory : t.navWheel;
+  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  $('wheelView').hidden = view !== 'wheel';
+  $('historyView').hidden = view !== 'history';
+  $('accountView').hidden = view !== 'account';
+  $('stage').classList.toggle('small', done);
+
+  const prev = recheckOf && loadEntries().find(e => e.id === recheckOf);
+  const banner = $('banner');
+  banner.hidden = !prev || done;
+  if (prev) {
+    const pn = findNodes(prev.path);
+    banner.textContent = fmt(t.recheckBanner, { f: label(pn[pn.length - 1]), n: prev.intensity });
+  }
+
+  $('step').textContent = done ? t.stepDone : t['step' + path.length];
+
+  const crumbs = $('crumbs');
+  crumbs.innerHTML = '';
+  if (path.length) crumbs.append(h('button', { onclick: () => jump(0) }, t.start));
+  path.forEach((node, i) => {
+    crumbs.append(h('span', { class: 'sep' }, '›'));
+    crumbs.append(h('button', { style: `border-color:${node.base}`, onclick: () => jump(i + 1) }, label(node)));
+  });
+
+  const actions = $('actions');
+  actions.innerHTML = '';
+  if (done) {
+    actions.append(h('button', { class: 'btn', onclick: back }, t.back),
+                   h('button', { class: 'btn', onclick: () => { recheckOf = null; jump(0); } }, t.restart));
+  } else if (path.length) {
+    actions.append(h('button', { class: 'btn', onclick: back }, t.back),
+                   h('button', { class: 'btn primary', onclick: finish }, t.thisIsIt));
+  } else {
+    actions.append(h('p', { class: 'drag-hint' }, t.dragHint));
+  }
+}
+
+// ---------- Result: understand, paths, save ----------
+function renderResult() {
+  const box = $('result');
+  box.hidden = !done;
+  box.innerHTML = '';
+  if (!done) return;
+
+  const t = UI[lang], l = L();
+  const cur = path[path.length - 1];
+  const core = path[0], mid = path[1], leaf = path[2];
+  const ci = CORE_INFO[core.en];
+  const midInfo = mid && MID_INFO[mid.en];
+  const leafInfo = leaf && LEAF_INFO[mid.en + '/' + leaf.en];
+  const f = label(cur);
+  const positive = core.en === 'Happy';
+
+  // Header with intensity
+  const prev = recheckOf && loadEntries().find(e => e.id === recheckOf);
+  const valEl = h('span', { class: 'val' }, draft.intensity + '/10');
+  const head = h('div', { class: 'card r-head' },
+    h('p', { class: 'eyebrow' }, t.youFeel),
+    h('h2', null, h('span', { class: 'swatch', style: `background:${fill(cur)}` }), f),
+    h('p', { class: 'path' }, path.map(label).join(' › ')),
+    prev && h('div', { class: 'transition' }, fmt(t.transition, {
+      a: label(findNodes(prev.path).pop()), n: prev.intensity, b: f, m: draft.intensity,
+    })),
+    h('div', { class: 'intensity' },
+      h('label', { for: 'intensity' }, t.intensity),
+      h('div', { class: 'row' },
+        h('input', { id: 'intensity', type: 'range', min: 1, max: 10, value: draft.intensity, oninput: e => {
+          draft.intensity = +e.target.value;
+          valEl.textContent = draft.intensity + '/10';
+          const tr = head.querySelector('.transition');
+          if (tr) tr.textContent = fmt(t.transition, { a: label(findNodes(prev.path).pop()), n: prev.intensity, b: f, m: draft.intensity });
+        } }),
+        valEl)),
+  );
+  box.append(head);
+
+  // Support note for heavy feelings
+  if (path.some(n => HEAVY.has(n.en))) {
+    box.append(h('div', { class: 'crisis', role: 'note' },
+      h('strong', null, t.crisisTitle),
+      t.crisis + ' ', h('a', { href: 'https://findahelpline.com', target: '_blank', rel: 'noopener' }, 'findahelpline.com'), ' ' + t.crisisEnd));
+  }
+
+  // A. Understand this feeling
+  const meaning = [];
+  if (leafInfo) {
+    meaning.push(h('p', null, leafInfo[l]));
+    meaning.push(h('p', { class: 'sub' }, `${t.partOf} “${label(mid)}”${t.colon}${midInfo.mean[l]}`));
+  } else if (midInfo) {
+    meaning.push(h('p', null, midInfo.mean[l]));
+    meaning.push(h('p', { class: 'sub' }, `${t.partOf} “${label(core)}”${t.colon}${ci.mean[l]}`));
+  } else {
+    meaning.push(h('p', null, ci.mean[l]));
+  }
+  box.append(h('div', { class: 'card' },
+    h('h3', null, t.understandTitle),
+    h('div', { class: 'facts' },
+      h('div', { class: 'wide' }, h('h4', null, t.meaning), meaning),
+      midInfo && h('div', null, h('h4', null, t.when), h('ul', null, midInfo.sits[l].map(s => h('li', null, s)))),
+      h('div', null, h('h4', null, t.body), h('p', null, ci.body[l])),
+      h('div', { class: 'wide' }, h('h4', null, t.telling), h('p', null, ci.need[l])),
+    )));
+
+  // B. What do you want to do with it?
+  const paths = [['stay', t.stay], ['understand', t.understand], ['shift', positive ? t.carry : t.shift]];
+  const card = h('div', { class: 'card' }, h('h3', null, t.pathsTitle),
+    h('div', { class: 'paths' }, paths.map(([key, [ico, name, desc]]) =>
+      h('button', { class: 'path-btn', type: 'button', 'aria-pressed': String(draft.approach === key), onclick: () => {
+        draft.approach = draft.approach === key ? null : key;
+        renderResult();
+      } }, h('span', { class: 'ico' }, ico), h('b', null, name), h('span', { class: 'd' }, desc)))));
+  if (draft.approach) card.append(renderPanel(draft.approach, { t, l, f, ci }));
+  box.append(card);
+
+  // C. Save the check-in
+  const saved = !!draft.savedId;
+  box.append(h('div', { class: 'card save-card' },
+    h('div', { class: 'q' },
+      h('label', { for: 'note' }, t.note),
+      field('note', '', v => { draft.note = v; }, draft.note)),
+    h('div', { class: 'save-row' },
+      h('button', { class: 'btn primary', disabled: saved, onclick: saveCheckin }, saved ? t.savedBtn : t.save),
+      saved && h('button', { class: 'btn', onclick: () => show('history') }, t.viewHistory)),
+    saved && h('p', { class: 'saved-msg' }, t.saved),
+    h('p', { class: 'fine' }, t.localOnly)));
+}
+
+function field(id, placeholder, onInput, value) {
+  return h('textarea', { id, placeholder, oninput: e => onInput(e.target.value) }, value || '');
+}
+function answer(key) {
+  return field('a-' + key, '', v => { draft.answers[key] = v; }, draft.answers[key]);
+}
+
+function renderPanel(key, { t, l, f: name, ci }) {
+  const panel = h('div', { class: 'panel' });
+  // Feeling name used mid-sentence
+  const f = lang !== 'zh' ? name.toLowerCase() : name;
+  if (key === 'stay') {
+    panel.append(h('ol', null,
+      t.staySteps.map(s => h('li', null, fmt(s, { f, body: ci.body[l] }))),
+      h('li', null, ci.stay[l])));
+    panel.append(h('div', { class: 'q' },
+      h('label', { for: 'a-stay' }, t.staySentence),
+      field('a-stay', fmt(t.staySentencePh, { f }), v => { draft.answers.stay = v; }, draft.answers.stay)));
+  } else if (key === 'understand') {
+    const qs = [...t.questions, ci.dig[l]];
+    qs.forEach((q, i) => {
+      panel.append(h('div', { class: 'q' },
+        h('label', { for: 'a-q' + i }, q),
+        i === 2 && h('p', { class: 'hint' }, `${t.hint}${t.colon}${ci.need[l]}`),
+        answer('q' + i)));
+    });
+  } else {
+    panel.append(h('p', { class: 'intro' }, ci.shiftIntro ? ci.shiftIntro[l] : t.shiftIntro));
+    ci.shift.forEach((s, i) => {
+      panel.append(h('label', { class: 'check' },
+        h('input', { type: 'checkbox', checked: draft.tried.includes(i), onchange: e => {
+          draft.tried = e.target.checked ? [...draft.tried, i] : draft.tried.filter(x => x !== i);
+        } }),
+        h('span', null, s[l])));
+    });
+  }
+  return panel;
+}
+
+function saveCheckin() {
+  const entries = loadEntries();
+  const entry = {
+    id: Date.now().toString(36),
+    ts: Date.now(),
+    path: path.map(n => n.en),
+    intensity: draft.intensity,
+    approach: draft.approach,
+    answers: draft.answers,
+    tried: draft.tried,
+    note: draft.note.trim(),
+    prev: recheckOf,
+  };
+  entries.unshift(entry);
+  saveEntries(entries);
+  draft.savedId = entry.id;
+  recheckOf = null;
+  renderResult();
+  renderChrome();
+}
+
+// ---------- Account screen ----------
+let authMode = 'signup';
+function renderAccount() {
+  const t = UI[lang], box = $('accountView');
+  box.innerHTML = '';
+  const up = authMode === 'signup';
+  const field = (id, text, type, attrs) => h('div', { class: 'field' },
+    h('label', { for: id }, text),
+    h('input', { id, name: id, type, required: true, ...attrs }));
+  const error = h('p', { class: 'auth-error', role: 'alert' });
+  const submit = h('button', { type: 'submit', class: 'btn primary' }, up ? t.createBtn : t.signInBtn);
+
+  const onSubmit = async e => {
+    e.preventDefault();
+    const nickname = up ? $('a-nick').value.trim() : '';
+    const email = $('a-email').value.trim().toLowerCase();
+    const password = $('a-pw').value;
+    let problem = null;
+    if (up && (nickname.length < 2 || nickname.length > 30)) problem = 'errNick';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) problem = 'errEmail';
+    else if (password.length < 8) problem = 'errPw';
+    else if (!(window.crypto && crypto.subtle && crypto.randomUUID)) problem = 'errCrypto';
+    if (!problem) {
+      submit.disabled = true;
+      try { await (up ? signUp(nickname, email, password) : signIn(email, password)); }
+      catch (code) { problem = typeof code === 'string' ? code : 'errCrypto'; }
+      submit.disabled = false;
+    }
+    if (problem) { error.textContent = t[problem]; return; }
+    show('history');
+  };
+
+  box.append(h('form', { class: 'card auth', novalidate: true, onsubmit: onSubmit },
+    h('h2', null, up ? t.authTitleUp : t.authTitleIn),
+    h('p', { class: 'auth-sub' }, up ? t.authSubUp : t.authSubIn),
+    up && field('a-nick', t.nickname, 'text', { autocomplete: 'nickname', maxlength: 30 }),
+    field('a-email', t.email, 'email', { autocomplete: 'email' }),
+    field('a-pw', t.password, 'password', { autocomplete: up ? 'new-password' : 'current-password', minlength: 8, placeholder: up ? t.pwHint : '' }),
+    error,
+    submit,
+    h('button', { type: 'button', class: 'link', onclick: () => { authMode = up ? 'signin' : 'signup'; renderAccount(); } }, up ? t.toSignIn : t.toSignUp),
+    h('p', { class: 'fine' }, t.authLocal)));
+}
+
+// ---------- History ----------
+function renderHistory() {
+  const t = UI[lang], box = $('historyView');
+  box.innerHTML = '';
+  const account = currentAccount();
+  box.append(h('div', { class: 'history-head' },
+    h('h2', null, t.historyTitle),
+    account && h('div', { class: 'who' },
+      h('span', null, fmt(t.hello, { n: account.nickname })),
+      h('button', { class: 'btn small', onclick: () => { signOut(); show('wheel'); } }, t.signOut))));
+  const entries = loadEntries();
+  if (!entries.length) {
+    box.append(h('p', { class: 'empty' }, t.empty));
+    return;
+  }
+  const byId = Object.fromEntries(entries.map(e => [e.id, e]));
+  const now = Date.now(), DAY = 864e5;
+
+  // Stats
+  const week = entries.filter(e => now - e.ts < 7 * DAY).length;
+  const changes = entries.filter(e => e.prev && byId[e.prev]).map(e => e.intensity - byId[e.prev].intensity);
+  const avg = changes.length ? changes.reduce((a, b) => a + b, 0) / changes.length : null;
+  const counts = {};
+  entries.forEach(e => { if (e.approach) counts[e.approach] = (counts[e.approach] || 0) + 1; });
+  const topPath = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  box.append(h('div', { class: 'stats' },
+    h('div', { class: 'stat' }, h('div', { class: 'n' }, String(week)), h('div', { class: 'l' }, t.statWeek)),
+    h('div', { class: 'stat' }, h('div', { class: 'n' }, avg == null ? t.none : (avg > 0 ? '+' : '') + avg.toFixed(1)), h('div', { class: 'l' }, t.statChange)),
+    h('div', { class: 'stat' }, h('div', { class: 'n' }, topPath ? t[topPath][0] + ' ' + t[topPath][1] : t.none), h('div', { class: 'l' }, t.statPath))));
+
+  // Mix of core feelings over 30 days
+  const recent = entries.filter(e => now - e.ts < 30 * DAY);
+  if (recent.length) {
+    const coreCount = {};
+    recent.forEach(e => { coreCount[e.path[0]] = (coreCount[e.path[0]] || 0) + 1; });
+    const max = Math.max(...Object.values(coreCount));
+    box.append(h('div', { class: 'card' }, h('h3', null, t.mix),
+      h('div', { class: 'bars' }, DATA.filter(c => coreCount[c.en]).sort((a, b) => coreCount[b.en] - coreCount[a.en]).map(c =>
+        h('div', { class: 'bar' },
+          h('span', null, label(c)),
+          h('div', { class: 'track' }, h('div', { class: 'fill', style: `width:${coreCount[c.en] / max * 100}%;background:${c.base}` })),
+          h('span', { class: 'c' }, String(coreCount[c.en])))))));
+  }
+
+  // Timeline
+  const dateFmt = new Intl.DateTimeFormat(LOCALE[lang], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  entries.forEach(e => {
+    const nodes = findNodes(e.path);
+    if (!nodes.length) return;
+    const last = nodes[nodes.length - 1];
+    const prevE = e.prev && byId[e.prev];
+    const later = entries.filter(x => x.prev === e.id);
+    box.append(h('div', { class: 'card entry' },
+      h('div', { class: 'top' },
+        h('span', { class: 'name' }, h('span', { class: 'swatch', style: `background:${fill(last)}` }), label(last), ` · ${e.intensity}/10`),
+        h('span', { class: 'when' }, dateFmt.format(e.ts))),
+      h('div', { class: 'meta' }, nodes.map(label).join(' › '), ' ',
+        e.approach && h('span', { class: 'tag' }, t[e.approach][0] + ' ' + t[e.approach][1])),
+      prevE && h('div', { class: 'meta' }, `${t.recheckOf}${t.colon}${label(findNodes(prevE.path).pop())} (${prevE.intensity}/10) → ${label(last)} (${e.intensity}/10)`),
+      later.map(x => h('div', { class: 'meta' }, `${t.laterFelt}${t.colon}${label(findNodes(x.path).pop())} (${x.intensity}/10)`)),
+      e.note && h('p', { class: 'note' }, e.note),
+      h('div', { class: 'btns' },
+        h('button', { class: 'btn small', onclick: () => startRecheck(e.id) }, t.recheck),
+        h('button', { class: 'btn small', onclick: () => {
+          if (!confirm(t.confirmDel)) return;
+          saveEntries(loadEntries().filter(x => x.id !== e.id));
+          renderHistory();
+        } }, t.del))));
+  });
+}
+
+// ---------- Flow ----------
+function render() {
+  renderChrome();
+  if (view === 'wheel') renderResult();
+  else if (view === 'history') renderHistory();
+  else renderAccount();
+}
+// Tapping a ring cloud floats it to the centre and grows its own feelings around it
+function choose(c) {
+  path.push(c.node);
+  freezeSpin();
+  clouds.forEach(o => { if (o !== c && !o.dead) retire(o, false); });
+  c.center = true;
+  c.hover = false;
+  if (!c.node.children.length) return settle(c);
+  c.t = { r: 0, s: CENTER / c.size, o: 1 };
+  setLabel(c);
+  makeRing(c.node.children, false, 260);
+  render();
+}
+// "That's it": the centre cloud becomes the named feeling
+function finish() {
+  freezeSpin();
+  clouds.forEach(o => { if (!o.dead && !o.center) retire(o, false); });
+  settle(clouds.find(o => o.center && !o.dead));
+}
+function settle(c) {
+  done = true;
+  draft = newDraft();
+  c.t = { r: 0, s: FINAL / c.size, o: 1 };
+  setLabel(c);
+  clearHalo();
+  render();
+  // Once the stage has finished shrinking, scroll so the named cloud sits on top of its card
+  setTimeout(() => {
+    window.scrollTo({ top: $('stage').getBoundingClientRect().top + window.scrollY - 8, behavior: 'smooth' });
+  }, 650);
+}
+function back() {
+  if (!path.length) return;
+  // Coming back from "That's it" reopens the same level; otherwise go up one
+  if (!(done && path[path.length - 1].children.length)) path.pop();
+  done = false;
+  rebuild();
+}
+function jump(n) { path = path.slice(0, n); done = false; rebuild(); }
+// Clear the sky and bring in the clouds for the current level
+function rebuild(first) {
+  freezeSpin();
+  clouds.forEach(o => { if (!o.dead) retire(o, true); });
+  const cur = path[path.length - 1];
+  makeCenter(cur || null, !first);
+  makeRing(cur ? cur.children : DATA, !first, first ? 0 : 120);
+  render();
+}
+function show(v) {
+  // Check-ins belong to an account: without one, land on sign-up (or sign-in if this device has accounts)
+  if (v === 'history' && !currentAccount()) {
+    v = 'account';
+    authMode = readJSON(ACCOUNTS_KEY, []).length ? 'signin' : 'signup';
+  }
+  view = v;
+  if (v === 'wheel' && draft.savedId) {
+    path = [];
+    done = false;
+    draft = newDraft();
+    rebuild();
+  } else {
+    render();
+  }
+  window.scrollTo(0, 0);
+}
+function startRecheck(id) {
+  recheckOf = id;
+  path = [];
+  done = false;
+  view = 'wheel';
+  rebuild();
+  window.scrollTo(0, 0);
+}
+
+$('navBtn').addEventListener('click', () => show(view === 'wheel' ? 'history' : 'wheel'));
+document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+  lang = b.dataset.lang;
+  try { localStorage.setItem('fw-lang', lang); } catch (e) {}
+  clouds.forEach(c => { if (!c.dead) setLabel(c); });
+  render();
+}));
+
+rebuild(true);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
